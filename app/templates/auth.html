@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập | Đăng kiểm AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root { --ink: #102a43; --blue: #1769aa; --mint: #d9f3ee; --paper: #f7fbfa; }
+        body { background: radial-gradient(circle at 15% 10%, #d9f3ee 0, transparent 34%), linear-gradient(135deg, #f7fbfa 0%, #e7f0f5 100%); color: var(--ink); }
+        .panel { box-shadow: 0 24px 70px rgba(16, 42, 67, .14); }
+        .tab-active { color: var(--blue); border-bottom: 2px solid var(--blue); }
+        .rise { animation: rise .5s ease both; }
+        @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen font-sans" x-data="authData()">
+    <main class="min-h-screen grid lg:grid-cols-[1.05fr_.95fr]">
+        <section class="hidden lg:flex flex-col justify-between p-14 bg-[#102a43] text-white relative overflow-hidden">
+            <div class="absolute -right-28 -top-24 w-80 h-80 rounded-full border-[38px] border-[#2c8c8c]/40"></div>
+            <div class="relative">
+                <div class="flex items-center gap-3 text-lg font-semibold tracking-wide"><span class="grid place-items-center w-10 h-10 rounded-xl bg-[#2c8c8c]">ĐK</span> ĐĂNG KIỂM AI</div>
+                <div class="mt-28 max-w-lg rise">
+                    <p class="text-[#8ed8ce] uppercase tracking-[.24em] text-xs font-bold">Cổng nghiệp vụ</p>
+                    <h1 class="mt-5 text-5xl font-bold leading-tight">Vận hành đăng kiểm rõ ràng, nhanh gọn.</h1>
+                    <p class="mt-6 text-blue-100/75 text-lg leading-8">Một không gian tập trung cho phương tiện, lịch kiểm định và trợ lý AI quy trình.</p>
+                </div>
+            </div>
+            <p class="relative text-sm text-blue-100/50">© 2026 Hệ thống Quản lý Đăng kiểm</p>
+        </section>
+
+        <section class="flex items-center justify-center p-6 sm:p-10">
+            <div class="panel bg-white/95 rounded-2xl w-full max-w-md p-7 sm:p-10 rise">
+                <div class="lg:hidden flex items-center gap-3 text-lg font-semibold mb-10"><span class="grid place-items-center w-10 h-10 rounded-xl bg-[#2c8c8c] text-white">ĐK</span> ĐĂNG KIỂM AI</div>
+                <div class="mb-8">
+                    <p class="text-sm text-slate-500">Xin chào,</p>
+                    <h2 class="text-3xl font-bold mt-1" x-text="titles[mode]"></h2>
+                </div>
+
+                <div class="grid grid-cols-2 border-b border-slate-200 mb-7 text-sm font-semibold">
+                    <button @click="setMode('login')" :class="mode === 'login' ? 'tab-active' : 'text-slate-400'" class="pb-3">Đăng nhập</button>
+                    <button @click="setMode('register')" :class="mode === 'register' ? 'tab-active' : 'text-slate-400'" class="pb-3">Đăng ký</button>
+                </div>
+
+                <div x-show="notice" x-text="notice" class="mb-5 rounded-lg bg-emerald-50 text-emerald-700 px-4 py-3 text-sm"></div>
+                <div x-show="error" x-text="error" class="mb-5 rounded-lg bg-red-50 text-red-700 px-4 py-3 text-sm"></div>
+
+                <form @submit.prevent="submit()" class="space-y-4">
+                    <label class="block text-sm font-medium">Tên đăng nhập
+                        <input x-model.trim="form.username" required autocomplete="username" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 outline-none focus:border-[#1769aa]" placeholder="Nhập tên đăng nhập">
+                    </label>
+                    <label x-show="mode === 'register'" class="block text-sm font-medium">Họ và tên
+                        <input x-model.trim="form.full_name" :required="mode === 'register'" autocomplete="name" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 outline-none focus:border-[#1769aa]" placeholder="Nguyễn Văn A">
+                    </label>
+                    <label x-show="mode !== 'forgot'" class="block text-sm font-medium">Mật khẩu
+                        <input x-model="form.password" :required="mode !== 'forgot'" type="password" autocomplete="current-password" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 outline-none focus:border-[#1769aa]" :placeholder="mode === 'login' ? 'Nhập mật khẩu' : 'Tối thiểu 6 ký tự'">
+                    </label>
+                    <div x-show="mode === 'login'" class="-mt-2 text-right">
+                        <button type="button" @click="setMode('forgot')" class="text-sm font-medium text-[#1769aa] hover:underline">Quên mật khẩu?</button>
+                    </div>
+                    <label x-show="mode === 'reset'" class="block text-sm font-medium">Mã đặt lại
+                        <input x-model.trim="form.reset_token" :required="mode === 'reset'" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 outline-none focus:border-[#1769aa]" placeholder="Dán mã nhận được">
+                    </label>
+                    <label x-show="mode === 'reset'" class="block text-sm font-medium">Mật khẩu mới
+                        <input x-model="form.new_password" :required="mode === 'reset'" type="password" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 outline-none focus:border-[#1769aa]" placeholder="Tối thiểu 6 ký tự">
+                    </label>
+                    <button class="w-full rounded-lg bg-[#1769aa] text-white py-3 font-semibold hover:bg-[#125487] disabled:opacity-50" :disabled="loading" x-text="loading ? 'Đang xử lý...' : actions[mode]"></button>
+                </form>
+                <button x-show="mode === 'reset'" @click="setMode('login')" class="mt-4 w-full text-sm text-slate-500 hover:text-[#1769aa]">Quay lại đăng nhập</button>
+            </div>
+        </section>
+    </main>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script>
+        function authData() {
+            return {
+                mode: window.location.pathname === '/register' ? 'register' : 'login',
+                loading: false,
+                notice: new URLSearchParams(window.location.search).get('registered') === '1' ? 'Đăng ký thành công. Vui lòng đăng nhập để tiếp tục.' : '',
+                error: '',
+                form: { username: '', full_name: '', password: '', reset_token: '', new_password: '' },
+                titles: { login: 'Đăng nhập tài khoản', register: 'Tạo tài khoản mới', forgot: 'Khôi phục mật khẩu', reset: 'Đặt lại mật khẩu' },
+                actions: { login: 'Đăng nhập', register: 'Tạo tài khoản', forgot: 'Tạo mã khôi phục', reset: 'Lưu mật khẩu mới' },
+                setMode(mode) { this.mode = mode; this.notice = ''; this.error = ''; },
+                async submit() {
+                    this.loading = true; this.notice = ''; this.error = '';
+                    const endpoints = { login: '/api/auth/login', register: '/api/auth/register', forgot: '/api/auth/forgot-password', reset: '/api/auth/reset-password' };
+                    const body = this.mode === 'register' ? { username: this.form.username, full_name: this.form.full_name, password: this.form.password } : this.mode === 'reset' ? { username: this.form.username, reset_token: this.form.reset_token, new_password: this.form.new_password } : this.mode === 'forgot' ? { username: this.form.username } : { username: this.form.username, password: this.form.password };
+                    try {
+                        const res = await fetch(endpoints[this.mode], { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.detail || 'Không thể thực hiện yêu cầu.');
+                        if (this.mode === 'login') {
+                            localStorage.setItem('token', data.access_token); localStorage.setItem('username', data.username); localStorage.setItem('role', data.role); window.location.href = '/app'; return;
+                        }
+                        if (this.mode === 'forgot') { this.notice = data.reset_token ? `Mã khôi phục (development): ${data.reset_token}` : data.message; this.mode = 'reset'; }
+                        else {
+                            if (this.mode === 'register') {
+                                window.location.href = '/login?registered=1';
+                                return;
+                            }
+                            this.notice = data.message || 'Thao tác thành công.';
+                        }
+                    } catch (error) { this.error = error.message; } finally { this.loading = false; }
+                }
+            }
+        }
+    </script>
+    <script>
+        window.addEventListener('load', () => {
+            if (window.Alpine) return;
+
+            const root = document.querySelector('[x-data="authData()"]');
+            if (!root) return;
+
+            const form = root.querySelector('form');
+            const title = root.querySelector('[x-text="titles[mode]"]');
+            const submitButton = form.querySelector('button[type="submit"]');
+            const notice = root.querySelector('[x-show="notice"]');
+            const error = root.querySelector('[x-show="error"]');
+            const inputFor = (model) => Array.from(root.querySelectorAll('input')).find((input) => input.getAttribute('x-model') === model || input.getAttribute('x-model.trim') === model);
+            const username = inputFor('form.username');
+            const fullName = inputFor('form.full_name');
+            const password = inputFor('form.password');
+            const resetToken = inputFor('form.reset_token');
+            const newPassword = inputFor('form.new_password');
+            const fullNameLabel = fullName.closest('label');
+            const passwordLabel = password.closest('label');
+            const resetTokenLabel = resetToken.closest('label');
+            const newPasswordLabel = newPassword.closest('label');
+            const forgotLink = root.querySelector('button[x-show="mode === \'login\'"]');
+            const backButton = root.querySelector('button[x-show="mode === \'reset\'"]');
+            const tabs = root.querySelectorAll('.grid-cols-2 button');
+            const titles = { login: 'Đăng nhập tài khoản', register: 'Tạo tài khoản mới', forgot: 'Khôi phục mật khẩu', reset: 'Đặt lại mật khẩu' };
+            const actions = { login: 'Đăng nhập', register: 'Tạo tài khoản', forgot: 'Tạo mã khôi phục', reset: 'Lưu mật khẩu mới' };
+            let mode = window.location.pathname === '/register' ? 'register' : 'login';
+
+            function setMode(nextMode) {
+                mode = nextMode;
+                title.textContent = titles[mode];
+                submitButton.textContent = actions[mode];
+                fullNameLabel.style.display = mode === 'register' ? '' : 'none';
+                passwordLabel.style.display = mode === 'forgot' ? 'none' : '';
+                forgotLink.style.display = mode === 'login' ? '' : 'none';
+                resetTokenLabel.style.display = mode === 'reset' ? '' : 'none';
+                newPasswordLabel.style.display = mode === 'reset' ? '' : 'none';
+                backButton.style.display = mode === 'reset' ? '' : 'none';
+                password.required = mode !== 'forgot';
+                fullName.required = mode === 'register';
+                resetToken.required = mode === 'reset';
+                newPassword.required = mode === 'reset';
+                password.placeholder = mode === 'login' ? 'Nhập mật khẩu' : 'Tối thiểu 6 ký tự';
+                notice.style.display = 'none';
+                error.style.display = 'none';
+            }
+
+            function showMessage(element, message) {
+                element.textContent = message;
+                element.style.display = '';
+            }
+
+            tabs[0].addEventListener('click', () => setMode('login'));
+            tabs[1].addEventListener('click', () => setMode('register'));
+            forgotLink.addEventListener('click', () => setMode('forgot'));
+            backButton.addEventListener('click', () => setMode('login'));
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                submitButton.disabled = true;
+                error.style.display = 'none';
+                const endpoints = { login: '/api/auth/login', register: '/api/auth/register', forgot: '/api/auth/forgot-password', reset: '/api/auth/reset-password' };
+                const body = mode === 'register' ? { username: username.value.trim(), full_name: fullName.value.trim(), password: password.value } : mode === 'reset' ? { username: username.value.trim(), reset_token: resetToken.value.trim(), new_password: newPassword.value } : mode === 'forgot' ? { username: username.value.trim() } : { username: username.value.trim(), password: password.value };
+                try {
+                    const response = await fetch(endpoints[mode], { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.detail || 'Không thể thực hiện yêu cầu.');
+                    if (mode === 'login') {
+                        localStorage.setItem('token', data.access_token);
+                        localStorage.setItem('username', data.username);
+                        localStorage.setItem('role', data.role);
+                        window.location.href = '/app';
+                    } else if (mode === 'register') {
+                        window.location.href = '/login?registered=1';
+                    } else if (mode === 'forgot') {
+                        setMode('reset');
+                        showMessage(notice, data.reset_token ? `Mã khôi phục (development): ${data.reset_token}` : data.message);
+                    } else {
+                        setMode('login');
+                        showMessage(notice, data.message || 'Thao tác thành công.');
+                    }
+                } catch (requestError) {
+                    showMessage(error, requestError.message);
+                } finally {
+                    submitButton.disabled = false;
+                }
+            });
+
+            setMode(mode);
+            const registered = new URLSearchParams(window.location.search).get('registered');
+            if (registered === '1') showMessage(notice, 'Đăng ký thành công. Vui lòng đăng nhập để tiếp tục.');
+        });
+    </script>
+</body>
+</html>

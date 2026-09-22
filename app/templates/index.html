@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống Quản lý Đăng kiểm Xe cơ giới AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-100 font-sans" x-data="appData()" x-init="initData()">
+    <!-- Top Navigation Bar -->
+    <nav class="bg-blue-800 text-white p-4 shadow-md flex justify-between items-center">
+        <h1 class="text-xl font-bold">HỆ THỐNG ĐĂNG KIỂM XE CƠ GIỚI (AI INTEGRATED)</h1>
+        <div>
+            <template x-if="!token">
+                <button @click="showLoginModal = true" class="bg-green-600 px-4 py-2 rounded font-semibold hover:bg-green-700">Đăng nhập</button>
+            </template>
+            <template x-if="token">
+                <div class="flex items-center gap-4">
+                    <span>Xin chào, <b x-text="currentUser"></b> (<span x-text="userRole"></span>)</span>
+                    <button @click="logout()" class="bg-red-600 px-3 py-1 rounded text-sm hover:bg-red-700">Đăng xuất</button>
+                </div>
+            </template>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-6">
+        <!-- Dashboard Statistics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded shadow border-l-4 border-blue-500">
+                <p class="text-gray-500 text-sm">Tổng số xe</p>
+                <p class="text-2xl font-bold" x-text="stats.total"></p>
+            </div>
+            <div class="bg-white p-4 rounded shadow border-l-4 border-green-500">
+                <p class="text-gray-500 text-sm">An toàn (>15 ngày)</p>
+                <p class="text-2xl font-bold text-green-600" x-text="stats.safe"></p>
+            </div>
+            <div class="bg-white p-4 rounded shadow border-l-4 border-yellow-500">
+                <p class="text-gray-500 text-sm">Sắp hết hạn (<=15 ngày)</p>
+                <p class="text-2xl font-bold text-yellow-600" x-text="stats.warning"></p>
+            </div>
+            <div class="bg-white p-4 rounded shadow border-l-4 border-red-500">
+                <p class="text-gray-500 text-sm">Đã quá hạn</p>
+                <p class="text-2xl font-bold text-red-600" x-text="stats.expired"></p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left 2 Columns: CRUD & Tra cứu Xe -->
+            <div class="lg:col-span-2 bg-white p-6 rounded shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold">Danh sách Phương tiện</h2>
+                    <input type="text" x-model="searchQuery" @input="fetchVehicles()" placeholder="Tìm biển số xe..." class="border p-2 rounded w-64 text-sm">
+                </div>
+
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100 border-b">
+                            <th class="p-2">Biển số</th>
+                            <th class="p-2">Hãng xe</th>
+                            <th class="p-2">Hạn đăng kiểm</th>
+                            <th class="p-2">Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="v in vehicles" :key="v.id">
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="p-2 font-bold" x-text="v.plate_number"></td>
+                                <td class="p-2" x-text="v.brand"></td>
+                                <td class="p-2" x-text="formatDate(v.expiration_date)"></td>
+                                <td class="p-2">
+                                    <span :class="{
+                                        'bg-green-100 text-green-800': v.status === 'SAFE',
+                                        'bg-yellow-100 text-yellow-800': v.status === 'WARNING',
+                                        'bg-red-100 text-red-800': v.status === 'EXPIRED'
+                                    }" class="px-2 py-1 rounded text-xs font-semibold" x-text="v.status"></span>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Right 1 Column: AI Assistant Chatbot -->
+            <div class="bg-white p-6 rounded shadow flex flex-col h-[500px]">
+                <h2 class="text-lg font-bold mb-2 flex items-center gap-2">🤖 Trợ lý AI Đăng kiểm</h2>
+                <div class="flex-1 overflow-y-auto border p-3 rounded mb-3 bg-gray-50 space-y-2" id="chat-box">
+                    <template x-for="m in chatMessages">
+                        <div :class="m.role === 'user' ? 'text-right' : 'text-left'">
+                            <span :class="m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'" class="inline-block p-2 rounded text-sm" x-text="m.text"></span>
+                        </div>
+                    </template>
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" x-model="userPrompt" @keydown.enter="sendPrompt()" placeholder="Hỏi AI quy trình, phí..." class="border p-2 rounded flex-1 text-sm">
+                    <button @click="sendPrompt()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">Gửi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Đăng nhập -->
+    <div x-show="showLoginModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+        <div class="bg-white p-6 rounded shadow-lg w-96">
+            <h3 class="text-lg font-bold mb-4">Đăng nhập Hệ thống</h3>
+            <input type="text" x-model="loginForm.username" placeholder="Tên đăng nhập" class="border w-full p-2 mb-3 rounded">
+            <input type="password" x-model="loginForm.password" placeholder="Mật khẩu" class="border w-full p-2 mb-4 rounded">
+            <div class="flex justify-end gap-2">
+                <button @click="showLoginModal = false" class="px-4 py-2 bg-gray-300 rounded">Hủy</button>
+                <button @click="login()" class="px-4 py-2 bg-blue-600 text-white rounded">Đăng nhập</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function appData() {
+            return {
+                vehicles: [],
+                stats: { total: 0, safe: 0, warning: 0, expired: 0 },
+                searchQuery: '',
+                token: localStorage.getItem('token') || '',
+                currentUser: localStorage.getItem('username') || '',
+                userRole: localStorage.getItem('role') || '',
+                showLoginModal: false,
+                loginForm: { username: '', password: '' },
+                userPrompt: '',
+                chatMessages: [{ role: 'ai', text: 'Xin chào! Tôi có thể giúp gì cho bạn về quy trình và quy định đăng kiểm?' }],
+                
+                async initData() {
+                    if (!this.token) {
+                        window.location.href = '/login';
+                        return;
+                    }
+                    await this.fetchStats();
+                    await this.fetchVehicles();
+                },
+                async fetchStats() {
+                    const res = await fetch('/api/stats/summary', { headers: { Authorization: `Bearer ${this.token}` } });
+                    if (res.status === 401) { this.logout(); return; }
+                    this.stats = await res.json();
+                },
+                async fetchVehicles() {
+                    const url = this.searchQuery ? `/api/vehicles/?q=${this.searchQuery}` : '/api/vehicles/';
+                    const res = await fetch(url, { headers: { Authorization: `Bearer ${this.token}` } });
+                    if (res.status === 401) { this.logout(); return; }
+                    this.vehicles = await res.json();
+                },
+                async login() {
+                    const res = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(this.loginForm)
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        this.token = data.access_token;
+                        this.currentUser = data.username;
+                        this.userRole = data.role;
+                        localStorage.setItem('token', data.access_token);
+                        localStorage.setItem('username', data.username);
+                        localStorage.setItem('role', data.role);
+                        this.showLoginModal = false;
+                        alert('Đăng nhập thành công!');
+                    } else {
+                        alert('Đăng nhập thất bại!');
+                    }
+                },
+                logout() {
+                    this.token = '';
+                    localStorage.clear();
+                },
+                async sendPrompt() {
+                    if (!this.userPrompt) return;
+                    const txt = this.userPrompt;
+                    this.chatMessages.push({ role: 'user', text: txt });
+                    this.userPrompt = '';
+                    const res = await fetch('/api/ai/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+                        body: JSON.stringify({ prompt: txt })
+                    });
+                    const data = await res.json();
+                    this.chatMessages.push({ role: 'ai', text: data.response });
+                },
+                formatDate(d) {
+                    return new Date(d).toLocaleDateString('vi-VN');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"name": "appProject",
+			"path": "../../../../../Desktop/appProject"
+		},
+		{
+			"name": "Trọ",
+			"path": "../../../../../Desktop/Trọ"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "appProject"
+	}
+}
