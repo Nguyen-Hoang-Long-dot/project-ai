@@ -4,13 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hệ thống Quản lý Đăng kiểm Xe cơ giới AI</title>
+    <style>[x-cloak] { display: none !important; }</style>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="bg-gray-100 font-sans" x-data="appData()" x-init="initData()">
     <!-- Top Navigation Bar -->
-    <nav class="bg-blue-800 text-white p-4 shadow-md flex justify-between items-center">
-        <h1 class="text-xl font-bold">HỆ THỐNG ĐĂNG KIỂM XE CƠ GIỚI (AI INTEGRATED)</h1>
+    <nav class="sticky top-0 z-30 bg-blue-900 text-white px-5 py-4 shadow-md flex justify-between items-center">
+        <h1 class="text-lg md:text-xl font-bold">HỆ THỐNG ĐĂNG KIỂM XE CƠ GIỚI</h1>
         <div>
             <template x-if="!token">
                 <button @click="showLoginModal = true" class="bg-green-600 px-4 py-2 rounded font-semibold hover:bg-green-700">Đăng nhập</button>
@@ -18,13 +19,33 @@
             <template x-if="token">
                 <div class="flex items-center gap-4">
                     <span>Xin chào, <b x-text="currentUser"></b> (<span x-text="userRole"></span>)</span>
-                    <button @click="logout()" class="bg-red-600 px-3 py-1 rounded text-sm hover:bg-red-700">Đăng xuất</button>
+                    <button @click="confirmLogout = true" class="bg-red-600 px-3 py-1 rounded text-sm hover:bg-red-700">Đăng xuất</button>
                 </div>
             </template>
         </div>
     </nav>
 
-    <div class="container mx-auto p-6">
+    <div class="mx-auto grid max-w-[1800px] grid-cols-1 gap-5 p-4 md:p-6 xl:grid-cols-[190px_minmax(0,1fr)_300px]">
+        <aside class="self-start rounded-xl bg-white p-3 shadow xl:sticky xl:top-24" aria-label="Điều hướng chính">
+            <p class="px-3 pb-2 pt-1 text-xs font-bold uppercase tracking-wider text-gray-400">Danh mục</p>
+            <nav class="flex gap-2 overflow-x-auto xl:flex-col" aria-label="Các phân hệ">
+                <template x-for="item in visibleSections()" :key="item.id">
+                    <button @click="section = item.id"
+                            :aria-current="section === item.id ? 'page' : null"
+                            :class="section === item.id ? 'bg-blue-800 text-white shadow' : 'text-gray-700 hover:bg-blue-50'"
+                            class="min-w-max rounded-lg px-3 py-3 text-left text-sm font-semibold transition-colors xl:w-full"
+                            x-text="item.label"></button>
+                </template>
+            </nav>
+            <div class="mt-5 hidden border-t px-3 pt-4 text-xs text-gray-500 xl:block">
+                Đang đăng nhập:
+                <p class="mt-1 truncate font-semibold text-gray-800" x-text="currentUser"></p>
+                <p class="mt-1" x-text="userRole"></p>
+            </div>
+        </aside>
+
+        <main class="min-w-0 space-y-5">
+        <section x-show="section === 'overview'">
         <!-- Dashboard Statistics Cards -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div class="bg-white p-4 rounded shadow border-l-4 border-blue-500">
@@ -44,10 +65,16 @@
                 <p class="text-2xl font-bold text-red-600" x-text="stats.expired"></p>
             </div>
         </div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded shadow"><p class="text-gray-500 text-sm">Lịch hẹn</p><p class="text-2xl font-bold" x-text="stats.appointments || 0"></p></div>
+            <div class="bg-white p-4 rounded shadow"><p class="text-gray-500 text-sm">Hồ sơ hoàn tất</p><p class="text-2xl font-bold" x-text="stats.completed_inspections || 0"></p></div>
+            <div class="bg-white p-4 rounded shadow"><p class="text-gray-500 text-sm">Kết quả Đạt</p><p class="text-2xl font-bold text-green-700" x-text="stats.passed_inspections || 0"></p></div>
+            <div class="bg-white p-4 rounded shadow"><p class="text-gray-500 text-sm">Kết quả Không đạt</p><p class="text-2xl font-bold text-red-700" x-text="stats.failed_inspections || 0"></p></div>
+        </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 gap-6">
             <!-- Left 2 Columns: CRUD & Tra cứu Xe -->
-            <div class="lg:col-span-2 bg-white p-6 rounded shadow">
+            <div class="bg-white p-6 rounded shadow">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-lg font-bold">Danh sách Phương tiện</h2>
                     <input type="text" x-model="searchQuery" @input="fetchVehicles()" placeholder="Tìm biển số xe..." class="border p-2 rounded w-64 text-sm">
@@ -81,22 +108,183 @@
                 </table>
             </div>
 
-            <!-- Right 1 Column: AI Assistant Chatbot -->
-            <div class="bg-white p-6 rounded shadow flex flex-col h-[500px]">
-                <h2 class="text-lg font-bold mb-2 flex items-center gap-2">🤖 Trợ lý AI Đăng kiểm</h2>
-                <div class="flex-1 overflow-y-auto border p-3 rounded mb-3 bg-gray-50 space-y-2" id="chat-box">
-                    <template x-for="m in chatMessages">
-                        <div :class="m.role === 'user' ? 'text-right' : 'text-left'">
-                            <span :class="m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'" class="inline-block p-2 rounded text-sm" x-text="m.text"></span>
+        </div>
+        </section>
+
+        <section x-show="section === 'owners'" class="bg-white p-6 rounded shadow space-y-5">
+            <h2 class="text-xl font-bold">Quản lý chủ xe</h2>
+            <form x-show="userRole !== 'OWNER'" @submit.prevent="createOwner()" class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <input x-model.trim="ownerForm.full_name" required minlength="2" placeholder="Họ và tên" class="border p-2 rounded">
+                <input x-model.trim="ownerForm.phone" placeholder="Số điện thoại" class="border p-2 rounded">
+                <input x-model.trim="ownerForm.address" placeholder="Địa chỉ" class="border p-2 rounded">
+                <button class="bg-blue-700 text-white rounded px-4 py-2">Thêm chủ xe</button>
+            </form>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left"><thead><tr class="bg-gray-100"><th class="p-2">Họ tên</th><th class="p-2">Điện thoại</th><th class="p-2">Địa chỉ</th></tr></thead>
+                    <tbody><template x-for="owner in owners" :key="owner.id"><tr class="border-b"><td class="p-2" x-text="owner.full_name"></td><td class="p-2" x-text="owner.phone || '—'"></td><td class="p-2" x-text="owner.address || '—'"></td></tr></template></tbody>
+                </table>
+            </div>
+            <form x-show="userRole === 'OWNER'" @submit.prevent="updateOwner()" class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <input x-model.trim="ownerForm.full_name" required placeholder="Họ và tên" class="border p-2 rounded">
+                <input x-model.trim="ownerForm.phone" placeholder="Số điện thoại" class="border p-2 rounded">
+                <input x-model.trim="ownerForm.address" placeholder="Địa chỉ" class="border p-2 rounded">
+                <button class="bg-blue-700 text-white rounded px-4 py-2">Lưu thông tin của tôi</button>
+            </form>
+        </section>
+
+        <section x-show="section === 'vehicles'" class="bg-white p-6 rounded shadow space-y-5">
+            <h2 class="text-xl font-bold">Quản lý phương tiện</h2>
+            <form @submit.prevent="createVehicle()" class="grid grid-cols-1 md:grid-cols-6 gap-3">
+                <input x-model.trim="vehicleForm.plate_number" required placeholder="Biển số" class="border p-2 rounded">
+                <input x-model.trim="vehicleForm.brand" required placeholder="Hãng xe" class="border p-2 rounded">
+                <input x-model.number="vehicleForm.manufacture_year" required type="number" min="1900" :max="new Date().getFullYear()" placeholder="Năm SX" class="border p-2 rounded">
+                <input x-model="vehicleForm.expiration_date" required type="date" class="border p-2 rounded" aria-label="Hạn đăng kiểm hiện tại">
+                <select x-show="userRole !== 'OWNER'" x-model.number="vehicleForm.owner_id" required class="border p-2 rounded">
+                    <option value="">Chọn chủ xe</option><template x-for="owner in owners" :key="owner.id"><option :value="owner.id" x-text="owner.full_name"></option></template>
+                </select>
+                <button class="bg-blue-700 text-white rounded px-4 py-2">Thêm phương tiện</button>
+            </form>
+            <div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="bg-gray-100"><th class="p-2">Biển số</th><th class="p-2">Hãng xe</th><th class="p-2">Năm SX</th><th class="p-2">Hạn đăng kiểm</th><th class="p-2">Chủ xe</th><th class="p-2">Thao tác</th></tr></thead>
+                <tbody><template x-for="vehicle in vehicles" :key="vehicle.id"><tr class="border-b"><td class="p-2 font-semibold" x-text="vehicle.plate_number"></td><td class="p-2" x-text="vehicle.brand"></td><td class="p-2" x-text="vehicle.manufacture_year"></td><td class="p-2" x-text="formatDate(vehicle.expiration_date)"></td><td class="p-2" x-text="ownerName(vehicle.owner_id)"></td><td class="p-2 space-x-2"><button @click="showHistory(vehicle.id)" class="text-blue-700 underline">Lịch sử</button><button @click="editVehicle(vehicle)" class="text-blue-700 underline">Sửa</button><button x-show="userRole === 'ADMIN'" @click="deleteVehicle(vehicle.id)" class="text-red-700 underline">Xóa</button></td></tr></template></tbody>
+            </table></div>
+            <pre x-show="historyText" x-text="historyText" class="whitespace-pre-wrap bg-gray-50 p-4 rounded"></pre>
+        </section>
+
+        <section x-show="section === 'appointments'" class="bg-white p-6 rounded shadow space-y-5">
+            <h2 class="text-xl font-bold">Quản lý lịch hẹn</h2>
+            <form @submit.prevent="createAppointment()" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <select x-model.number="appointmentForm.vehicle_id" required class="border p-2 rounded"><option value="">Chọn phương tiện</option><template x-for="vehicle in vehicles" :key="vehicle.id"><option :value="vehicle.id" x-text="vehicle.plate_number + ' - ' + vehicle.brand"></option></template></select>
+                <input x-model="appointmentForm.scheduled_at" required type="datetime-local" class="border p-2 rounded">
+                <button class="bg-blue-700 text-white rounded px-4 py-2">Đặt lịch</button>
+            </form>
+            <div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="bg-gray-100"><th class="p-2">Phương tiện</th><th class="p-2">Thời gian</th><th class="p-2">Trạng thái</th><th class="p-2">Thao tác tiếp nhận</th></tr></thead>
+                <tbody><template x-for="appointment in appointments" :key="appointment.id"><tr class="border-b"><td class="p-2" x-text="vehicleName(appointment.vehicle_id)"></td><td class="p-2" x-text="formatDateTime(appointment.scheduled_at)"></td><td class="p-2" x-text="appointment.status"></td><td class="p-2 flex flex-wrap gap-2">
+                    <button x-show="['ADMIN','STAFF'].includes(userRole) && appointment.status === 'PENDING'" @click="changeAppointment(appointment.id,'CONFIRMED')" class="text-blue-700 underline">Xác nhận</button>
+                    <button x-show="['ADMIN','STAFF'].includes(userRole) && appointment.status !== 'CANCELLED' && appointment.status !== 'ARRIVED'" @click="changeAppointment(appointment.id,'CANCELLED')" class="text-red-700 underline">Hủy</button>
+                    <button x-show="userRole === 'OWNER' && appointment.status === 'PENDING'" @click="changeAppointment(appointment.id,'CANCELLED')" class="text-red-700 underline">Hủy lịch</button>
+                    <button x-show="['ADMIN','STAFF'].includes(userRole) && appointment.status !== 'CANCELLED' && !profileForAppointment(appointment.id)" @click="intakeAppointment(appointment)" class="text-green-700 underline">Tiếp nhận xe</button>
+                </td></tr></template></tbody>
+            </table></div>
+        </section>
+
+        <section x-show="section === 'inspections'" class="bg-white p-6 rounded shadow space-y-5">
+            <h2 class="text-xl font-bold">Hồ sơ và kết quả kiểm định</h2>
+            <form x-show="['ADMIN','STAFF'].includes(userRole)" @submit.prevent="createProfile()" class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <select x-model.number="profileForm.vehicle_id" required class="border p-2 rounded"><option value="">Chọn phương tiện</option><template x-for="vehicle in vehicles" :key="vehicle.id"><option :value="vehicle.id" x-text="vehicle.plate_number"></option></template></select>
+                <input x-model.trim="profileForm.check_items" required placeholder="Hạng mục, phân cách bằng dấu phẩy" class="border p-2 rounded md:col-span-2">
+                <input x-model.trim="profileForm.documents" placeholder="Danh mục giấy tờ cần đối chiếu, phân cách bằng dấu phẩy" class="border p-2 rounded">
+                <button class="bg-blue-700 text-white rounded px-4 py-2">Khởi tạo hồ sơ</button>
+            </form>
+            <template x-for="profile in profiles" :key="profile.id">
+                <article class="border rounded p-4 space-y-3">
+                    <div class="flex flex-wrap justify-between gap-2"><h3 class="font-bold">Hồ sơ #<span x-text="profile.id"></span> - <span x-text="vehicleName(profile.vehicle_id)"></span></h3><span class="font-semibold" x-text="profile.final_result || 'Đang kiểm định'"></span></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <template x-for="check in profile.checks" :key="check.id">
+                            <div class="flex flex-wrap items-center gap-2 border rounded p-2">
+                                <span class="flex-1" x-text="check.item_name"></span>
+                                <select :id="'check-' + check.id" :disabled="profile.final_result || !['ADMIN','INSPECTOR'].includes(userRole)" :value="check.status || ''" class="border p-1 rounded">
+                                    <option value="">Chưa nhập</option><option value="PASSED">Đạt</option><option value="FAILED">Không đạt</option>
+                                </select>
+                                <button x-show="!profile.final_result && ['ADMIN','INSPECTOR'].includes(userRole)" @click="saveCheck(profile.id,check.id)" class="text-blue-700 underline">Lưu</button>
+                            </div>
+                        </template>
+                    </div>
+                    <div x-show="profile.documents && profile.documents.length" class="space-y-2">
+                        <h4 class="font-semibold">Giấy tờ hồ sơ</h4>
+                        <template x-for="doc in profile.documents" :key="doc.id">
+                            <div class="flex flex-wrap items-center gap-2 border rounded p-2">
+                                <span class="flex-1" x-text="doc.document_name"></span>
+                                <select :id="'document-' + doc.id" :disabled="profile.final_result || !['ADMIN','STAFF'].includes(userRole)" :value="doc.status" class="border p-1 rounded">
+                                    <option value="MISSING">Chưa nhận</option><option value="RECEIVED">Đã nhận</option><option value="REVIEWED">Đã đối chiếu</option>
+                                </select>
+                                <button x-show="!profile.final_result && ['ADMIN','STAFF'].includes(userRole)" @click="saveDocument(profile.id,doc)" class="text-blue-700 underline">Lưu</button>
+                            </div>
+                        </template>
+                    </div>
+                    <div x-show="!profile.final_result && ['ADMIN','INSPECTOR'].includes(userRole)" class="flex flex-wrap items-center gap-2">
+                        <select :id="'result-' + profile.id" class="border p-2 rounded"><option value="">Chọn kết luận do kiểm định viên</option><option value="PASSED">Đạt</option><option value="FAILED">Không đạt</option></select>
+                        <input :id="'result-notes-' + profile.id" placeholder="Ghi chú kết luận" class="border p-2 rounded flex-1">
+                        <button @click="completeProfile(profile.id)" class="bg-green-700 text-white rounded px-4 py-2">Lưu kết luận</button>
+                    </div>
+                    <div x-show="profile.final_result === 'PASSED' && !profile.certificate && ['ADMIN','INSPECTOR'].includes(userRole)" class="flex flex-wrap gap-2">
+                        <input :id="'expiry-' + profile.id" required type="date" class="border p-2 rounded" aria-label="Ngày hết hạn do người có thẩm quyền xác định">
+                        <button @click="issueCertificate(profile.id)" class="bg-blue-700 text-white rounded px-4 py-2">Cấp chứng nhận</button>
+                    </div>
+                    <p class="text-sm text-gray-600" x-show="profile.certificate">Đã cấp chứng nhận: <span x-text="profile.certificate.certificate_number"></span></p>
+                </article>
+            </template>
+            <p class="text-sm text-amber-800">Kết luận và thời hạn chứng nhận do kiểm định viên/người có thẩm quyền nhập; hệ thống không tự tính quy định pháp lý và AI không quyết định kết quả.</p>
+        </section>
+
+        <section x-show="section === 'certificates'" class="bg-white p-6 rounded shadow space-y-4">
+            <h2 class="text-xl font-bold">Chứng nhận và lịch sử đăng kiểm</h2>
+            <div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="bg-gray-100"><th class="p-2">Số chứng nhận</th><th class="p-2">Hồ sơ</th><th class="p-2">Ngày cấp</th><th class="p-2">Ngày hết hạn</th></tr></thead>
+                <tbody><template x-for="certificate in certificates" :key="certificate.id"><tr class="border-b"><td class="p-2 font-semibold" x-text="certificate.certificate_number"></td><td class="p-2" x-text="vehicleName(profileForId(certificate.profile_id)?.vehicle_id)"></td><td class="p-2" x-text="formatDate(certificate.issued_at)"></td><td class="p-2" x-text="formatDate(certificate.expiration_date)"></td></tr></template></tbody>
+            </table></div>
+        </section>
+
+        <section x-show="section === 'ai'" class="bg-white p-6 rounded shadow space-y-5">
+            <h2 class="text-xl font-bold">Công cụ AI hỗ trợ</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="border rounded p-4 space-y-2"><h3 class="font-semibold">Tóm tắt hồ sơ</h3><select x-model.number="aiProfileId" class="border p-2 rounded w-full"><option value="">Chọn hồ sơ</option><template x-for="profile in profiles" :key="profile.id"><option :value="profile.id" x-text="'#' + profile.id + ' - ' + vehicleName(profile.vehicle_id)"></option></template></select><button @click="summarizeProfile()" class="bg-blue-700 text-white rounded px-3 py-2">Tóm tắt</button></div>
+                <div class="border rounded p-4 space-y-2"><h3 class="font-semibold">Tạo tin nhắc lịch</h3><select x-model.number="aiAppointmentId" class="border p-2 rounded w-full"><option value="">Chọn lịch hẹn</option><template x-for="appointment in appointments" :key="appointment.id"><option :value="appointment.id" x-text="vehicleName(appointment.vehicle_id) + ' - ' + formatDateTime(appointment.scheduled_at)"></option></template></select><button @click="generateReminder()" class="bg-blue-700 text-white rounded px-3 py-2">Tạo nội dung nhắc lịch</button></div>
+            </div>
+            <p class="text-sm text-amber-800">AI chỉ hỗ trợ tra cứu/tóm tắt/nhắc lịch, không kết luận Đạt/Không đạt. Nếu chưa cấu hình tài liệu quy trình, hệ thống sẽ nói rõ chưa có nguồn phù hợp.</p>
+        </section>
+
+        <section x-show="section === 'admin'" class="bg-white p-6 rounded shadow space-y-6">
+            <h2 class="text-xl font-bold">Quản trị hệ thống</h2>
+            <form @submit.prevent="createUser()" class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <input x-model.trim="userForm.username" required minlength="3" placeholder="Tên đăng nhập" class="border p-2 rounded">
+                <input x-model.trim="userForm.full_name" required placeholder="Họ tên" class="border p-2 rounded">
+                <input x-model="userForm.password" required minlength="6" type="password" placeholder="Mật khẩu tạm" class="border p-2 rounded">
+                <select x-model="userForm.role" class="border p-2 rounded"><option value="STAFF">Nhân viên</option><option value="INSPECTOR">Kiểm định viên</option><option value="OWNER">Chủ xe</option><option value="ADMIN">Quản trị viên</option></select>
+                <button class="bg-blue-700 text-white rounded px-4 py-2">Tạo tài khoản</button>
+            </form>
+            <div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="bg-gray-100"><th class="p-2">Tài khoản</th><th class="p-2">Họ tên</th><th class="p-2">Vai trò</th><th class="p-2">Cập nhật vai trò</th></tr></thead>
+                <tbody><template x-for="user in users" :key="user.id"><tr class="border-b"><td class="p-2" x-text="user.username"></td><td class="p-2" x-text="user.full_name"></td><td class="p-2" x-text="user.role"></td><td class="p-2"><select :id="'role-' + user.id" :disabled="user.username === currentUser" :value="user.role" class="border p-1 rounded"><option value="ADMIN">ADMIN</option><option value="STAFF">STAFF</option><option value="INSPECTOR">INSPECTOR</option><option value="OWNER">OWNER</option></select><button @click="updateRole(user.id)" class="ml-2 text-blue-700 underline">Lưu</button></td></tr></template></tbody>
+            </table></div>
+            <form @submit.prevent="createProcessDocument()" class="space-y-2 border-t pt-5">
+                <h3 class="font-semibold">Tài liệu quy trình cho chatbot</h3>
+                <input x-model.trim="documentForm.title" required placeholder="Tên tài liệu" class="border p-2 rounded w-full">
+                <textarea x-model.trim="documentForm.content" required minlength="20" rows="4" placeholder="Nội dung quy trình đã được xác minh" class="border p-2 rounded w-full"></textarea>
+                <button class="bg-blue-700 text-white rounded px-4 py-2">Thêm tài liệu</button>
+            </form>
+            <template x-for="doc in processDocuments" :key="doc.id"><article class="border rounded p-3"><div class="flex justify-between"><h4 class="font-semibold" x-text="doc.title"></h4><div class="space-x-3"><button @click="editProcessDocument(doc)" class="text-blue-700 underline">Sửa</button><button @click="deleteProcessDocument(doc.id)" class="text-red-700 underline">Xóa</button></div></div><p class="text-sm whitespace-pre-wrap mt-2" x-text="doc.content"></p></article></template>
+        </section>
+        </main>
+
+        <aside class="min-w-0 self-start xl:sticky xl:top-24" aria-label="Khung chat trợ lý AI">
+            <section class="flex h-[min(680px,calc(100vh-7rem))] min-h-[420px] flex-col overflow-hidden rounded-xl bg-white shadow">
+                <header class="bg-blue-900 px-4 py-4 text-white">
+                    <h2 class="flex items-center gap-2 text-lg font-bold"><span aria-hidden="true">✦</span> Trợ lý AI Đăng kiểm</h2>
+                    <p class="mt-1 text-xs text-blue-100">Tra cứu theo tài liệu quy trình đã cấu hình</p>
+                </header>
+                <div class="flex-1 space-y-3 overflow-y-auto bg-gray-50 p-4" aria-live="polite" aria-label="Nội dung hội thoại"
+                     x-effect="$nextTick(() => $el.scrollTop = $el.scrollHeight)">
+                    <template x-for="(m, index) in chatMessages" :key="index">
+                        <div :class="m.role === 'user' ? 'justify-end' : 'justify-start'" class="flex">
+                            <p :class="m.role === 'user' ? 'bg-blue-700 text-white' : 'border border-gray-200 bg-white text-gray-800'"
+                               class="max-w-[90%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-sm shadow-sm"
+                               x-text="m.text"></p>
                         </div>
                     </template>
+                    <p x-show="chatSending" class="text-xs text-gray-500">Trợ lý đang trả lời...</p>
                 </div>
-                <div class="flex gap-2">
-                    <input type="text" x-model="userPrompt" @keydown.enter="sendPrompt()" placeholder="Hỏi AI quy trình, phí..." class="border p-2 rounded flex-1 text-sm">
-                    <button @click="sendPrompt()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">Gửi</button>
-                </div>
-            </div>
-        </div>
+                <form @submit.prevent="sendPrompt()" class="border-t p-3">
+                    <label for="assistant-prompt" class="sr-only">Tin nhắn cho trợ lý AI</label>
+                    <div class="flex items-end gap-2">
+                        <textarea id="assistant-prompt" x-model="userPrompt" @keydown.enter="if (!$event.shiftKey) { $event.preventDefault(); sendPrompt() }"
+                                  rows="2" maxlength="4000" placeholder="Nhập câu hỏi... (Enter để gửi)"
+                                  class="max-h-32 min-w-0 flex-1 resize-y rounded-lg border p-2 text-sm focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+                                  :disabled="chatSending"></textarea>
+                        <button type="submit" :disabled="chatSending || !userPrompt.trim()"
+                                class="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50">Gửi</button>
+                    </div>
+                    <p class="mt-2 text-xs text-gray-500">AI hỗ trợ tra cứu, không thay thế kết luận của kiểm định viên.</p>
+                </form>
+            </section>
+        </aside>
     </div>
 
     <!-- Modal Đăng nhập -->
@@ -112,19 +300,50 @@
         </div>
     </div>
 
+    <div x-show="confirmLogout" x-cloak class="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center"
+         role="dialog" aria-modal="true" aria-labelledby="logout-confirmation-title"
+         @keydown.escape.window="confirmLogout = false">
+        <div class="bg-white p-6 rounded shadow-lg w-full max-w-sm mx-4">
+            <h3 id="logout-confirmation-title" class="text-lg font-bold mb-2">Xác nhận đăng xuất</h3>
+            <p class="text-gray-600 mb-6">Bạn có chắc chắn muốn đăng xuất không?</p>
+            <div class="flex justify-end gap-2">
+                <button @click="confirmLogout = false" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Hủy</button>
+                <button @click="logout()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Đồng ý</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         function appData() {
             return {
+                section: 'overview',
                 vehicles: [],
+                owners: [],
+                appointments: [],
+                profiles: [],
+                certificates: [],
+                users: [],
+                processDocuments: [],
+                historyText: '',
                 stats: { total: 0, safe: 0, warning: 0, expired: 0 },
                 searchQuery: '',
                 token: localStorage.getItem('token') || '',
                 currentUser: localStorage.getItem('username') || '',
                 userRole: localStorage.getItem('role') || '',
                 showLoginModal: false,
+                confirmLogout: false,
+                ownerForm: { full_name: '', phone: '', address: '' },
+                vehicleForm: { plate_number: '', brand: '', manufacture_year: new Date().getFullYear(), expiration_date: '', owner_id: '' },
+                appointmentForm: { vehicle_id: '', scheduled_at: '' },
+                profileForm: { vehicle_id: '', check_items: 'Phanh, Khí thải, Đèn, Lốp', documents: '' },
+                userForm: { username: '', full_name: '', password: '', role: 'STAFF' },
+                documentForm: { title: '', content: '' },
+                aiProfileId: '',
+                aiAppointmentId: '',
                 loginForm: { username: '', password: '' },
                 userPrompt: '',
-                chatMessages: [{ role: 'ai', text: 'Xin chào! Tôi có thể giúp gì cho bạn về quy trình và quy định đăng kiểm?' }],
+                chatSending: false,
+                chatMessages: [{ role: 'ai', text: 'Tôi chỉ trả lời theo tài liệu quy trình được quản trị viên cấu hình.' }],
                 
                 async initData() {
                     if (!this.token) {
@@ -133,17 +352,261 @@
                     }
                     await this.fetchStats();
                     await this.fetchVehicles();
+                    await this.loadWorkflows();
                 },
                 async fetchStats() {
                     const res = await fetch('/api/stats/summary', { headers: { Authorization: `Bearer ${this.token}` } });
-                    if (res.status === 401) { this.logout(); return; }
+                    if (res.status === 401) { this.handleUnauthorized(); return; }
                     this.stats = await res.json();
                 },
                 async fetchVehicles() {
                     const url = this.searchQuery ? `/api/vehicles/?q=${this.searchQuery}` : '/api/vehicles/';
                     const res = await fetch(url, { headers: { Authorization: `Bearer ${this.token}` } });
-                    if (res.status === 401) { this.logout(); return; }
+                    if (res.status === 401) { this.handleUnauthorized(); return; }
                     this.vehicles = await res.json();
+                },
+                visibleSections() {
+                    const sections = [{ id: 'overview', label: 'Tổng quan' }, { id: 'vehicles', label: 'Phương tiện' },
+                        { id: 'appointments', label: 'Lịch hẹn' }, { id: 'inspections', label: 'Hồ sơ kiểm định' },
+                        { id: 'certificates', label: 'Chứng nhận' }, { id: 'ai', label: 'Công cụ AI' }];
+                    if (['ADMIN', 'STAFF', 'OWNER'].includes(this.userRole)) sections.splice(2, 0, { id: 'owners', label: 'Chủ xe' });
+                    if (this.userRole === 'ADMIN') sections.push({ id: 'admin', label: 'Quản trị' });
+                    return sections;
+                },
+                async api(path, options = {}) {
+                    const headers = { Authorization: 'Bearer ' + this.token };
+                    if (options.body) headers['Content-Type'] = 'application/json';
+                    const response = await fetch(path, { ...options, headers: { ...headers, ...options.headers } });
+                    if (response.status === 401) { this.handleUnauthorized(); throw new Error('Phiên đăng nhập đã hết hạn.'); }
+                    if (!response.ok) {
+                        const error = await response.json().catch(() => ({}));
+                        throw new Error(error.detail || 'Không thể thực hiện yêu cầu.');
+                    }
+                    return response.status === 204 ? null : response.json();
+                },
+                async loadWorkflows() {
+                    const requests = [
+                        this.api('/api/appointments').then(data => this.appointments = data),
+                        this.api('/api/inspection-profiles').then(data => this.profiles = data),
+                        this.api('/api/certificates').then(data => this.certificates = data)
+                    ];
+                    if (['ADMIN', 'STAFF', 'OWNER'].includes(this.userRole)) {
+                        requests.push(this.api('/api/owners').then(data => {
+                            this.owners = data;
+                            if (this.userRole === 'OWNER' && data.length) {
+                                this.ownerForm.full_name = data[0].full_name;
+                                this.ownerForm.phone = data[0].phone;
+                                this.ownerForm.address = data[0].address || '';
+                            }
+                        }));
+                    }
+                    if (this.userRole === 'ADMIN') {
+                        requests.push(this.api('/api/admin/users').then(data => this.users = data));
+                        requests.push(this.api('/api/ai/process-documents').then(data => this.processDocuments = data));
+                    }
+                    await Promise.all(requests);
+                },
+                async createOwner() {
+                    try {
+                        await this.api('/api/owners', { method: 'POST', body: JSON.stringify(this.ownerForm) });
+                        this.ownerForm = { full_name: '', phone: '', address: '' };
+                        await this.loadWorkflows();
+                        alert('Đã thêm chủ xe.');
+                    } catch (error) { alert(error.message); }
+                },
+                async updateOwner() {
+                    if (!this.owners.length) return;
+                    try {
+                        await this.api(`/api/owners/${this.owners[0].id}`, { method: 'PATCH', body: JSON.stringify(this.ownerForm) });
+                        await this.loadWorkflows();
+                        alert('Đã cập nhật thông tin chủ xe.');
+                    } catch (error) { alert(error.message); }
+                },
+                async createVehicle() {
+                    try {
+                        const body = { ...this.vehicleForm, owner_id: this.vehicleForm.owner_id ? Number(this.vehicleForm.owner_id) : null,
+                            expiration_date: this.vehicleForm.expiration_date + 'T12:00:00' };
+                        body.manufacture_year = Number(body.manufacture_year);
+                        await this.api('/api/vehicles/', { method: 'POST', body: JSON.stringify(body) });
+                        this.vehicleForm.plate_number = '';
+                        this.vehicleForm.brand = '';
+                        this.vehicleForm.owner_id = '';
+                        await this.fetchVehicles();
+                        await this.fetchStats();
+                        alert('Đã thêm phương tiện.');
+                    } catch (error) { alert(error.message); }
+                },
+                ownerName(ownerId) {
+                    const owner = this.owners.find(item => item.id === ownerId);
+                    return owner ? owner.full_name : `Chủ xe #${ownerId}`;
+                },
+                async editVehicle(vehicle) {
+                    const brand = prompt('Hãng xe:', vehicle.brand);
+                    if (brand === null || !brand.trim()) return;
+                    const year = prompt('Năm sản xuất:', vehicle.manufacture_year);
+                    if (year === null || !Number.isInteger(Number(year))) return;
+                    try {
+                        await this.api(`/api/vehicles/${vehicle.id}`, { method: 'PUT', body: JSON.stringify({
+                            brand: brand.trim(), manufacture_year: Number(year)
+                        }) });
+                        await this.fetchVehicles();
+                    } catch (error) { alert(error.message); }
+                },
+                async deleteVehicle(vehicleId) {
+                    if (!confirm('Xóa phương tiện này?')) return;
+                    try {
+                        await this.api(`/api/vehicles/${vehicleId}`, { method: 'DELETE' });
+                        await this.fetchVehicles();
+                        await this.fetchStats();
+                    } catch (error) { alert(error.message); }
+                },
+                vehicleName(vehicleId) {
+                    const vehicle = this.vehicles.find(item => item.id === vehicleId);
+                    return vehicle ? `${vehicle.plate_number} - ${vehicle.brand}` : `Phương tiện #${vehicleId}`;
+                },
+                async createAppointment() {
+                    try {
+                        await this.api('/api/appointments', { method: 'POST', body: JSON.stringify({
+                            vehicle_id: Number(this.appointmentForm.vehicle_id),
+                            scheduled_at: new Date(this.appointmentForm.scheduled_at).toISOString()
+                        }) });
+                        this.appointmentForm = { vehicle_id: '', scheduled_at: '' };
+                        await this.loadWorkflows();
+                        await this.fetchStats();
+                        alert('Đã tạo lịch hẹn.');
+                    } catch (error) { alert(error.message); }
+                },
+                async changeAppointment(id, status) {
+                    try {
+                        await this.api(`/api/appointments/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
+                        await this.loadWorkflows();
+                    } catch (error) { alert(error.message); }
+                },
+                async intakeAppointment(appointment) {
+                    try {
+                        await this.api('/api/inspection-profiles', { method: 'POST', body: JSON.stringify({
+                            vehicle_id: appointment.vehicle_id, appointment_id: appointment.id,
+                            check_items: this.profileForm.check_items.split(',').map(item => item.trim()).filter(Boolean),
+                            documents: this.profileForm.documents.split(',').map(item => item.trim()).filter(Boolean)
+                        }) });
+                        await this.loadWorkflows();
+                        this.section = 'inspections';
+                    } catch (error) { alert(error.message); }
+                },
+                profileForAppointment(id) { return this.profiles.find(profile => profile.appointment_id === id); },
+                profileForId(id) { return this.profiles.find(profile => profile.id === id); },
+                async createProfile() {
+                    try {
+                        await this.api('/api/inspection-profiles', { method: 'POST', body: JSON.stringify({
+                            vehicle_id: Number(this.profileForm.vehicle_id),
+                            check_items: this.profileForm.check_items.split(',').map(item => item.trim()).filter(Boolean),
+                            documents: this.profileForm.documents.split(',').map(item => item.trim()).filter(Boolean)
+                        }) });
+                        await this.loadWorkflows();
+                        alert('Đã khởi tạo hồ sơ kiểm định.');
+                    } catch (error) { alert(error.message); }
+                },
+                async saveCheck(profileId, checkId) {
+                    const select = document.getElementById(`check-${checkId}`);
+                    if (!select.value) { alert('Chọn kết quả hạng mục trước khi lưu.'); return; }
+                    try {
+                        await this.api(`/api/inspection-profiles/${profileId}/checks/${checkId}`, {
+                            method: 'PUT', body: JSON.stringify({ status: select.value })
+                        });
+                        await this.loadWorkflows();
+                    } catch (error) { alert(error.message); }
+                },
+                async saveDocument(profileId, doc) {
+                    const select = document.getElementById(`document-${doc.id}`);
+                    try {
+                        await this.api(`/api/inspection-profiles/${profileId}/documents/${doc.id}`, {
+                            method: 'PUT',
+                            body: JSON.stringify({ document_name: doc.document_name, status: select.value, notes: doc.notes })
+                        });
+                        await this.loadWorkflows();
+                    } catch (error) { alert(error.message); }
+                },
+                async completeProfile(profileId) {
+                    const result = document.getElementById(`result-${profileId}`).value;
+                    if (!result) { alert('Chọn kết luận do kiểm định viên đưa ra.'); return; }
+                    try {
+                        await this.api(`/api/inspection-profiles/${profileId}/complete`, {
+                            method: 'POST', body: JSON.stringify({ result, notes: document.getElementById(`result-notes-${profileId}`).value })
+                        });
+                        await this.loadWorkflows();
+                        await this.fetchStats();
+                    } catch (error) { alert(error.message); }
+                },
+                async issueCertificate(profileId) {
+                    const date = document.getElementById(`expiry-${profileId}`).value;
+                    if (!date) { alert('Nhập ngày hết hạn do người có thẩm quyền xác định.'); return; }
+                    try {
+                        await this.api(`/api/inspection-profiles/${profileId}/certificate`, {
+                            method: 'POST', body: JSON.stringify({ expiration_date: `${date}T12:00:00` })
+                        });
+                        await this.loadWorkflows();
+                        await this.fetchVehicles();
+                        await this.fetchStats();
+                        alert('Đã cấp chứng nhận.');
+                    } catch (error) { alert(error.message); }
+                },
+                async showHistory(vehicleId) {
+                    try { this.historyText = JSON.stringify(await this.api(`/api/vehicles/${vehicleId}/history`), null, 2); }
+                    catch (error) { alert(error.message); }
+                },
+                async summarizeProfile() {
+                    if (!this.aiProfileId) { alert('Chọn hồ sơ cần tóm tắt.'); return; }
+                    try {
+                        const result = await this.api(`/api/ai/inspection-profiles/${this.aiProfileId}/summary`, { method: 'POST' });
+                        this.chatMessages.push({ role: 'ai', text: result.response });
+                    } catch (error) { alert(error.message); }
+                },
+                async generateReminder() {
+                    if (!this.aiAppointmentId) { alert('Chọn lịch hẹn cần nhắc.'); return; }
+                    try {
+                        const result = await this.api(`/api/ai/appointments/${this.aiAppointmentId}/reminder`, { method: 'POST' });
+                        this.chatMessages.push({ role: 'ai', text: result.response });
+                    } catch (error) { alert(error.message); }
+                },
+                async createUser() {
+                    try {
+                        await this.api('/api/admin/users', { method: 'POST', body: JSON.stringify(this.userForm) });
+                        this.userForm = { username: '', full_name: '', password: '', role: 'STAFF' };
+                        await this.loadWorkflows();
+                    } catch (error) { alert(error.message); }
+                },
+                async updateRole(userId) {
+                    try {
+                        const role = document.getElementById(`role-${userId}`).value;
+                        await this.api(`/api/admin/users/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) });
+                        await this.loadWorkflows();
+                    } catch (error) { alert(error.message); }
+                },
+                async createProcessDocument() {
+                    try {
+                        await this.api('/api/ai/process-documents', { method: 'POST', body: JSON.stringify(this.documentForm) });
+                        this.documentForm = { title: '', content: '' };
+                        await this.loadWorkflows();
+                    } catch (error) { alert(error.message); }
+                },
+                async editProcessDocument(doc) {
+                    const title = prompt('Tên tài liệu:', doc.title);
+                    if (title === null || !title.trim()) return;
+                    const content = prompt('Nội dung quy trình:', doc.content);
+                    if (content === null || content.trim().length < 20) return;
+                    try {
+                        await this.api(`/api/ai/process-documents/${doc.id}`, {
+                            method: 'PUT', body: JSON.stringify({ title: title.trim(), content: content.trim() })
+                        });
+                        await this.loadWorkflows();
+                    } catch (error) { alert(error.message); }
+                },
+                async deleteProcessDocument(id) {
+                    if (!confirm('Xóa tài liệu quy trình này?')) return;
+                    try {
+                        await this.api(`/api/ai/process-documents/${id}`, { method: 'DELETE' });
+                        await this.loadWorkflows();
+                    } catch (error) { alert(error.message); }
                 },
                 async login() {
                     const res = await fetch('/api/auth/login', {
@@ -156,6 +619,7 @@
                         this.token = data.access_token;
                         this.currentUser = data.username;
                         this.userRole = data.role;
+                        this.section = 'overview';
                         localStorage.setItem('token', data.access_token);
                         localStorage.setItem('username', data.username);
                         localStorage.setItem('role', data.role);
@@ -166,24 +630,49 @@
                     }
                 },
                 logout() {
+                    this.confirmLogout = false;
+                    this.clearSession();
+                    window.location.href = '/login';
+                },
+                handleUnauthorized() {
+                    this.clearSession();
+                    window.location.href = '/login';
+                },
+                clearSession() {
                     this.token = '';
-                    localStorage.clear();
+                    this.currentUser = '';
+                    this.userRole = '';
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('username');
+                    localStorage.removeItem('role');
                 },
                 async sendPrompt() {
-                    if (!this.userPrompt) return;
-                    const txt = this.userPrompt;
+                    const txt = this.userPrompt.trim();
+                    if (!txt || this.chatSending) return;
+                    const conversation = this.chatMessages.slice(-10).map(message => ({
+                        role: message.role === 'user' ? 'user' : 'assistant',
+                        content: message.text
+                    }));
                     this.chatMessages.push({ role: 'user', text: txt });
                     this.userPrompt = '';
-                    const res = await fetch('/api/ai/chat', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
-                        body: JSON.stringify({ prompt: txt })
-                    });
-                    const data = await res.json();
-                    this.chatMessages.push({ role: 'ai', text: data.response });
+                    this.chatSending = true;
+                    try {
+                        const data = await this.api('/api/ai/chat', {
+                            method: 'POST',
+                            body: JSON.stringify({ prompt: txt, conversation })
+                        });
+                        this.chatMessages.push({ role: 'ai', text: data.response });
+                    } catch (error) {
+                        this.chatMessages.push({ role: 'ai', text: `Không thể gửi câu hỏi: ${error.message}` });
+                    } finally {
+                        this.chatSending = false;
+                    }
                 },
                 formatDate(d) {
                     return new Date(d).toLocaleDateString('vi-VN');
+                },
+                formatDateTime(d) {
+                    return new Date(d).toLocaleString('vi-VN');
                 }
             }
         }

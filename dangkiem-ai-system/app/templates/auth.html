@@ -33,11 +33,10 @@
             <div class="panel bg-white/95 rounded-2xl w-full max-w-md p-7 sm:p-10 rise">
                 <div class="lg:hidden flex items-center gap-3 text-lg font-semibold mb-10"><span class="grid place-items-center w-10 h-10 rounded-xl bg-[#2c8c8c] text-white">ĐK</span> ĐĂNG KIỂM AI</div>
                 <div class="mb-8">
-                    <p class="text-sm text-slate-500">Xin chào,</p>
-                    <h2 class="text-3xl font-bold mt-1" x-text="titles[mode]"></h2>
+                    <h2 class="text-3xl font-bold" x-text="titles[mode]"></h2>
                 </div>
 
-                <div class="grid grid-cols-2 border-b border-slate-200 mb-7 text-sm font-semibold">
+                <div id="auth-mode-tabs" x-show="mode !== 'forgot' && mode !== 'reset'" class="grid grid-cols-2 border-b border-slate-200 mb-7 text-sm font-semibold">
                     <button @click="setMode('login')" :class="mode === 'login' ? 'tab-active' : 'text-slate-400'" class="pb-3">Đăng nhập</button>
                     <button @click="setMode('register')" :class="mode === 'register' ? 'tab-active' : 'text-slate-400'" class="pb-3">Đăng ký</button>
                 </div>
@@ -66,7 +65,7 @@
                     </label>
                     <button class="w-full rounded-lg bg-[#1769aa] text-white py-3 font-semibold hover:bg-[#125487] disabled:opacity-50" :disabled="loading" x-text="loading ? 'Đang xử lý...' : actions[mode]"></button>
                 </form>
-                <button x-show="mode === 'reset'" @click="setMode('login')" class="mt-4 w-full text-sm text-slate-500 hover:text-[#1769aa]">Quay lại đăng nhập</button>
+                <button id="auth-return-link" x-show="mode === 'forgot' || mode === 'reset'" @click="setMode('login')" class="mt-4 w-full text-xs font-bold text-slate-600 hover:text-[#1769aa]">Trở lại giao diện đăng nhập</button>
             </div>
         </section>
     </main>
@@ -129,7 +128,8 @@
             const resetTokenLabel = resetToken.closest('label');
             const newPasswordLabel = newPassword.closest('label');
             const forgotLink = root.querySelector('button[x-show="mode === \'login\'"]');
-            const backButton = root.querySelector('button[x-show="mode === \'reset\'"]');
+            const returnLink = root.querySelector('#auth-return-link');
+            const tabsBar = root.querySelector('#auth-mode-tabs');
             const tabs = root.querySelectorAll('.grid-cols-2 button');
             const titles = { login: 'Đăng nhập tài khoản', register: 'Tạo tài khoản mới', forgot: 'Khôi phục mật khẩu', reset: 'Đặt lại mật khẩu' };
             const actions = { login: 'Đăng nhập', register: 'Tạo tài khoản', forgot: 'Tạo mã khôi phục', reset: 'Lưu mật khẩu mới' };
@@ -142,9 +142,10 @@
                 fullNameLabel.style.display = mode === 'register' ? '' : 'none';
                 passwordLabel.style.display = mode === 'forgot' ? 'none' : '';
                 forgotLink.style.display = mode === 'login' ? '' : 'none';
+                tabsBar.style.display = mode === 'forgot' || mode === 'reset' ? 'none' : '';
                 resetTokenLabel.style.display = mode === 'reset' ? '' : 'none';
                 newPasswordLabel.style.display = mode === 'reset' ? '' : 'none';
-                backButton.style.display = mode === 'reset' ? '' : 'none';
+                returnLink.style.display = mode === 'forgot' || mode === 'reset' ? '' : 'none';
                 password.required = mode !== 'forgot';
                 fullName.required = mode === 'register';
                 resetToken.required = mode === 'reset';
@@ -162,7 +163,7 @@
             tabs[0].addEventListener('click', () => setMode('login'));
             tabs[1].addEventListener('click', () => setMode('register'));
             forgotLink.addEventListener('click', () => setMode('forgot'));
-            backButton.addEventListener('click', () => setMode('login'));
+            returnLink.addEventListener('click', () => setMode('login'));
             form.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 submitButton.disabled = true;

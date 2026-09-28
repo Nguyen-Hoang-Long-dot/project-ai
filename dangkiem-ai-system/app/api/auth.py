@@ -4,7 +4,7 @@ import secrets
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.db.models import User
+from app.db.models import Owner, User, UserRole
 from app.core.config import settings
 from app.core.security import verify_password, create_access_token, get_current_user_payload, get_password_hash
 from app.schemas.auth import ForgotPasswordRequest, ResetPasswordRequest, UserRegister
@@ -23,6 +23,8 @@ def register(payload: UserRegister, db: Session = Depends(get_db)):
         username=payload.username,
         full_name=payload.full_name,
         hashed_password=get_password_hash(payload.password),
+        role=UserRole.OWNER,
+        owner=Owner(full_name=payload.full_name, phone=payload.phone),
     )
     db.add(user)
     db.commit()
@@ -75,4 +77,6 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: dict = Depends(get_current_user_payload), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == current_user["sub"]).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Tài khoản không còn tồn tại.")
     return user

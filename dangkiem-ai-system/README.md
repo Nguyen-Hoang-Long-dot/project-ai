@@ -4,12 +4,18 @@ Dự án là một backend FastAPI mô phỏng hệ thống quản lý đăng ki
 
 ## Tính năng chính
 
-- Quản lý người dùng và phân quyền: ADMIN, STAFF, INSPECTOR
-- Quản lý chủ xe và phương tiện
-- Quản lý lịch hẹn và hồ sơ kiểm định
+- Quản lý tài khoản và phân quyền: ADMIN, STAFF, INSPECTOR, OWNER
+- Quản lý hồ sơ chủ xe và phương tiện; chủ xe chỉ truy cập dữ liệu của mình
+- Đặt lịch, xác nhận/hủy lịch và tiếp nhận phương tiện
+- Tạo hồ sơ kiểm định, ghi nhận từng hạng mục và lưu kết luận do kiểm định viên nhập
+- Cấp chứng nhận sau khi hồ sơ được kết luận Đạt; ngày hết hạn do người có thẩm quyền nhập
+- Tra cứu lịch sử kiểm định, chứng nhận và thống kê kết quả
 - Theo dõi trạng thái phương tiện: SAFE, WARNING, EXPIRED
 - API thống kê dashboard
-- AI chatbot giả lập phản hồi theo quy trình đăng kiểm
+- Chatbot chỉ trả lời từ tài liệu quy trình do quản trị viên cấu hình; từ chối dự đoán kết quả
+- Chatbot giữ mạch trao đổi bằng tối đa 10 tin nhắn gần nhất khi dùng OpenAI
+- AI hỗ trợ tóm tắt hồ sơ và tạo nội dung nhắc lịch (không gửi tin nhắn)
+- Quản trị viên quản lý tài khoản, vai trò và tài liệu quy trình cho chatbot
 - Health check cho môi trường deployment
 - Seed dữ liệu mẫu để demo nhanh
 
@@ -19,7 +25,7 @@ Dự án là một backend FastAPI mô phỏng hệ thống quản lý đăng ki
 - ORM: SQLAlchemy
 - CSDL: SQLite cho môi trường phát triển/demo
 - Bảo mật: JWT + password hashing bằng bcrypt
-- Frontend demo: Jinja template + HTML tĩnh
+- Frontend demo: Jinja template + HTML tĩnh, điều hướng dọc theo phân hệ và chatbot AI luôn hiển thị cạnh nội dung
 - Test: Pytest
 
 ## Cài đặt môi trường
@@ -68,7 +74,7 @@ OPENAI_API_KEY=
 ## Chạy ứng dụng
 
 ```bash
-uvicorn main:app --reload
+python -m uvicorn main:app --reload
 ```
 
 Truy cập:
@@ -85,6 +91,8 @@ Sau khi chạy ứng dụng, dữ liệu mẫu sẽ được seed tự động:
 - staff1 / staff123
 - inspector1 / 123456
 
+Chủ xe có thể đăng ký tài khoản từ màn hình đăng nhập/đăng ký.
+
 ## API quan trọng
 
 - POST /api/auth/login
@@ -94,6 +102,14 @@ Sau khi chạy ứng dụng, dữ liệu mẫu sẽ được seed tự động:
 - DELETE /api/vehicles/{vehicle_id}
 - POST /api/inspections/
 - GET /api/inspections/vehicle/{vehicle_id}
+- GET/POST /api/appointments
+- GET/POST /api/inspection-profiles
+- PUT /api/inspection-profiles/{profile_id}/checks/{check_id}
+- POST /api/inspection-profiles/{profile_id}/complete
+- POST /api/inspection-profiles/{profile_id}/certificate
+- GET /api/certificates
+- POST /api/ai/inspection-profiles/{profile_id}/summary
+- POST /api/ai/appointments/{appointment_id}/reminder
 - GET /api/stats/summary
 - POST /api/ai/chat
 - GET /health
@@ -104,8 +120,11 @@ Sau khi chạy ứng dụng, dữ liệu mẫu sẽ được seed tự động:
 Rất quan trọng:
 
 - AI chỉ hỗ trợ tra cứu quy trình, tóm tắt hồ sơ và nhắc lịch
+- Chatbot chỉ sử dụng nguồn tài liệu được quản trị viên thêm vào; nếu không có nguồn phù hợp, hệ thống thông báo chưa có thông tin thay vì tự tạo quy định
 - AI không có quyền quyết định Đạt / Không đạt đăng kiểm
 - Kết luận chuyên môn phải thuộc về kiểm định viên hoặc người có thẩm quyền
+- Hệ thống không tự suy ra chu kỳ pháp lý hoặc ngày hết hạn chứng nhận; người có thẩm quyền cung cấp ngày này
+- Khi cấu hình OpenAI, câu hỏi, tối đa 10 tin nhắn hội thoại gần nhất và tài liệu quy trình được chọn sẽ được gửi đến dịch vụ OpenAI
 
 ## Kiểm thử
 

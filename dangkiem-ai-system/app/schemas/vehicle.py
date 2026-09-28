@@ -15,13 +15,13 @@ class VehicleBase(BaseModel):
 
 class VehicleCreate(VehicleBase):
     expiration_date: datetime
+    owner_id: Optional[int] = None
 
 
 class VehicleUpdate(BaseModel):
     brand: Optional[str] = None
     manufacture_year: Optional[int] = None
     expiration_date: Optional[datetime] = None
-    status: Optional[VehicleStatus] = None
 
 
 class VehicleResponse(VehicleBase):

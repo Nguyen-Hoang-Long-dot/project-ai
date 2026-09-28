@@ -7,15 +7,15 @@ from fastapi.templating import Jinja2Templates
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api import ai_services, auth, inspections, stats, vehicles
+from app.api import ai_services, auth, inspections, stats, vehicles, workflows
 from app.core.config import settings
-from app.db.database import Base, engine
+from app.db.database import initialize_database
 from app.db.seed import seed_data
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
+    initialize_database()
     seed_data()
     yield
 
@@ -34,6 +34,7 @@ app.include_router(vehicles.router)
 app.include_router(inspections.router)
 app.include_router(stats.router)
 app.include_router(ai_services.router)
+app.include_router(workflows.router)
 
 # Exception Handler: Validate Đầu vào
 @app.exception_handler(RequestValidationError)
